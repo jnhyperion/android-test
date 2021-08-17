@@ -15,9 +15,14 @@
  */
 package androidx.test.runner;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.app.Instrumentation;
 import android.content.Context;
@@ -27,6 +32,7 @@ import android.os.Looper;
 import android.os.Message;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.MediumTest;
+import androidx.test.internal.events.client.TestEventClient;
 import androidx.test.internal.runner.RunnerArgs;
 import androidx.test.internal.runner.TestExecutor;
 import androidx.test.internal.runner.TestRequestBuilder;
@@ -63,6 +69,7 @@ public class AndroidJUnitRunnerTest {
   @Mock private Context mockContext;
   @Mock private InstrumentationResultPrinter instrumentationResultPrinter;
   @Mock private TestRequestBuilder testRequestBuilder;
+  @Mock private TestEventClient testEventClient;
 
   @Before
   public void setUp() throws Exception {
@@ -224,6 +231,36 @@ public class AndroidJUnitRunnerTest {
     Assert.assertEquals(2, pathsToScan.size());
     Assert.assertTrue(pathsToScan.contains("/foo/bar.dex"));
     Assert.assertTrue(pathsToScan.contains("/foo/baz.dex"));
+  }
+
+  @Test
+  public void onExceptionWithDisabledTestEventClient() {
+    when(testEventClient.isTestRunEventsEnabled()).thenReturn(false);
+    AndroidJUnitRunner ajur = new AndroidJUnitRunner(testEventClient);
+
+    ajur.onException(this, new RuntimeException("A runtime exception"));
+    verify(testEventClient, times(0)).reportProcessCrash(any());
+  }
+
+  @Test
+  public void onExceptionWithDisconnectedOrchestrator() {
+    when(testEventClient.isTestRunEventsEnabled()).thenReturn(true);
+    AndroidJUnitRunner ajur = new AndroidJUnitRunner(testEventClient);
+
+    ajur.onException(this, new RuntimeException("A runtime exception"));
+    verify(testEventClient, times(0)).reportProcessCrash(any());
+  }
+
+  @Test
+  public void onExceptionWithConnectedOrchestrator() {
+    when(testEventClient.isTestRunEventsEnabled()).thenReturn(true);
+    AndroidJUnitRunner ajur = spy(new AndroidJUnitRunner(testEventClient));
+    doNothing().when(ajur).onStart();
+    ajur.onTestEventClientConnect();
+
+    RuntimeException exception = new RuntimeException("A runtime exception");
+    ajur.onException(this, exception);
+    verify(testEventClient, times(1)).reportProcessCrash(eq(exception));
   }
 
   @Test

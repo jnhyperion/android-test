@@ -47,7 +47,7 @@ import org.junit.runner.notification.RunListener;
  * service, or if the {@code -e testRunEventService} arg is provided then {@link
  * androidx.test.services.events.run.TestRunEvent} messages are sent to the specified service.
  */
-public final class TestEventClient {
+public class TestEventClient {
   // TODO(b/161745142): Separate TestEventServiceClient and OrchestratorServiceClient impl code
   private static final String TAG = "TestEventClient";
 
